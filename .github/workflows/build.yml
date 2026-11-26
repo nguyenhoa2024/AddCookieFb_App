@@ -6,6 +6,11 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,38 +22,27 @@ jobs:
         run: |
           set -o pipefail
           make clean || true
-          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless 2>&1 | tee build.log
-          ls -la packages/ | tee -a build.log
-      - name: Commit build log on failure
-        if: failure()
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f build.log || true
-          git commit -m "CI: build log (fail)" || true
-          git push || true
+          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
       - name: Build Sileo repo metadata
         env:
           CMSG: ${{ github.event.head_commit.message }}
         run: |
-          sudo apt-get update && sudo apt-get install -y dpkg-dev bzip2 xz-utils
-          VER="1.0.${{ github.run_number }}"      # moi lan build version tu +1
+          sudo apt-get update && sudo apt-get install -y dpkg-dev bzip2 gzip xz-utils
+          VER="1.0.${{ github.run_number }}"
           DEB=$(ls packages/*.deb | head -1)
           rm -rf _repack && dpkg-deb -R "$DEB" _repack
           sed -i 's/^Architecture:.*/Architecture: iphoneos-arm64e/' _repack/DEBIAN/control
           sed -i "s/^Version:.*/Version: $VER/" _repack/DEBIAN/control
           dpkg-deb -Zxz -b _repack HoaQn.FBTokenLogin.deb
           rm -rf _repack packages .theos build.log
-          # changelog: them dong cho ban moi
           printf '## %s — %s\n- %s\n\n' "$VER" "$(date +%F)" "${CMSG:-update}" > CHANGELOG.new
           cat CHANGELOG.md >> CHANGELOG.new 2>/dev/null || true
           mv CHANGELOG.new CHANGELOG.md
           dpkg-scanpackages -m . > Packages
-          bzip2 -kf Packages
-          gzip -kf Packages
-          P5=$(md5sum Packages|cut -d' ' -f1); PS=$(sha256sum Packages|cut -d' ' -f1); PZ=$(wc -c <Packages)
+          bzip2 -kf Packages ; gzip -kf Packages
+          P5=$(md5sum Packages|cut -d' ' -f1);     PS=$(sha256sum Packages|cut -d' ' -f1);     PZ=$(wc -c <Packages)
           B5=$(md5sum Packages.bz2|cut -d' ' -f1); BS=$(sha256sum Packages.bz2|cut -d' ' -f1); BZ=$(wc -c <Packages.bz2)
-          G5=$(md5sum Packages.gz|cut -d" " -f1); GS=$(sha256sum Packages.gz|cut -d" " -f1); GZ=$(wc -c <Packages.gz)
+          G5=$(md5sum Packages.gz|cut -d' ' -f1);  GS=$(sha256sum Packages.gz|cut -d' ' -f1);  GZ=$(wc -c <Packages.gz)
           cat > Release <<EOF
           Origin: HoaQn Repo
           Label: HoaQn Repo
@@ -68,16 +62,34 @@ jobs:
            $GS $GZ Packages.gz
           EOF
           echo '<h1>HoaQn Repo - AddCookieFb</h1>' > index.html
+          mkdir -p _site
+          cp HoaQn.FBTokenLogin.deb Packages Packages.bz2 Packages.gz Release index.html _site/
       - name: Commit repo files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f HoaQn.FBTokenLogin.deb Packages Packages.bz2 Packages.gz Release index.html CHANGELOG.md
-          git commit -m "CI: build v1.0.${{ github.run_number }} + repo metadata" || { echo nothing; exit 0; }
-          git push origin HEAD:main
+          git commit -m "CI: build v1.0.${{ github.run_number }} + repo metadata" || echo nothing
+          git push origin HEAD:main || true
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
       - name: Purge jsDelivr cache
         run: |
           B="https://purge.jsdelivr.net/gh/nguyenhoa2024/AddCookieFb_App@main"
-          for f in Release Packages Packages.bz2 Packages.gz HoaQn.FBTokenLogin.deb; do
-            curl -s -o /dev/null "$B/$f" || true
-          done
+          for f in Release Packages Packages.bz2 Packages.gz HoaQn.FBTokenLogin.deb; do curl -s -o /dev/null "$B/$f" || true; done
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

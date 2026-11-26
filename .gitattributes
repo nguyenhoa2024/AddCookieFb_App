@@ -5,3 +5,11 @@
 Makefile text eol=lf
 control text eol=lf
 *.plist text eol=lf
+Release -text
+Release.gpg -text
+InRelease -text
+Packages -text
+Packages.bz2 -text
+Packages.gz -text
+hoaqn.gpg -text
+*.deb -text

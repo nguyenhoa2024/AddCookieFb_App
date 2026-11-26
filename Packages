@@ -1,14 +1,14 @@
 Package: com.hoaqn.fbtokenlogin
-Version: 1.0.7
+Version: 1.0.9
 Architecture: iphoneos-arm64e
 Maintainer: roothide
 Installed-Size: 184
 Depends: ellekit
 Filename: ./HoaQn.FBTokenLogin.deb
-Size: 7092
-MD5sum: d8e04c1ac01b24f15e7697cd4468e33f
-SHA1: 492a55fcc8f7bc27c217cb4c261d3d6a4f3670bf
-SHA256: c510708bbdc44c19647faa2776855aeb3804b303a64dff4cf6ecf4fb644a1eb1
+Size: 7080
+MD5sum: fc8b9abe5a2d8609aebdb624010edfa8
+SHA1: dc5573113603647dcba6e222c3778f35ec8fee0c
+SHA256: d61cf764a6f133b4575040a1cf526679d502408e3c4b325fa7cef998f630a47c
 Section: Tweaks
 Description: Inject FB session (token+datr+cookie) de login app Facebook khong can mat khau
 Author: roothide

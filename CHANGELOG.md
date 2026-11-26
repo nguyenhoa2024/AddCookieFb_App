@@ -1,3 +1,6 @@
+## 1.0.9 — 2026-11-26
+- CI: auto bat + deploy GitHub Pages (nguon Sileo on dinh, khong lech cache)
+
 ## 1.0.7 — 2026-11-26
 - Author=roothide; version tu tang theo run_number; CI tu ghi CHANGELOG moi ban
 

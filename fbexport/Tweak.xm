@@ -97,47 +97,64 @@ static NSString *collectCookies(void) {
     return parts.count ? [parts componentsJoinedByString:@";"] : nil;
 }
 
-// Toast trong app (giong deb goc) de biet da xuat
-static void showToast(NSString *msg) {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        @try {
-            UIApplication *app = [UIApplication sharedApplication];
-            UIWindow *win = nil;
-            for (UIWindow *w in app.windows) { if (w.isKeyWindow && !w.isHidden) { win = w; break; } }
-            if (!win) win = app.windows.firstObject;
-            if (!win) return;
-            UILabel *lbl = [[UILabel alloc] init];
-            lbl.tag = 0x7B10;
-            [[win viewWithTag:0x7B10] removeFromSuperview];
-            lbl.text = msg;
-            lbl.numberOfLines = 0;
-            lbl.textColor = [UIColor whiteColor];
-            lbl.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.88];
-            lbl.textAlignment = NSTextAlignmentCenter;
-            lbl.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
-            lbl.layer.cornerRadius = 12; lbl.clipsToBounds = YES;
-            CGFloat W = win.bounds.size.width - 40;
-            CGSize sz = [lbl sizeThatFits:CGSizeMake(W - 24, 600)];
-            lbl.frame = CGRectMake(20, 130, W, sz.height + 26);
-            lbl.alpha = 0;
-            [win addSubview:lbl];
-            [UIView animateWithDuration:0.25 animations:^{ lbl.alpha = 1; } completion:^(BOOL _f){
-                [UIView animateWithDuration:0.4 delay:3.5 options:0 animations:^{ lbl.alpha = 0; }
-                                 completion:^(BOOL _f2){ [lbl removeFromSuperview]; }];
-            }];
-        } @catch (__unused NSException *e) {}
-    });
+// Tim window dang hien (iOS15: uu tien scene foreground, fallback .windows). MAIN thread.
+static UIWindow *frontWindow(void) {
+    UIApplication *app = [UIApplication sharedApplication];
+    @try {
+        if ([app respondsToSelector:@selector(connectedScenes)]) {
+            for (UIScene *sc in app.connectedScenes) {
+                if (![sc isKindOfClass:[UIWindowScene class]]) continue;
+                if (sc.activationState != UISceneActivationStateForegroundActive) continue;
+                UIWindowScene *ws = (UIWindowScene *)sc;
+                for (UIWindow *w in ws.windows) { if (w.isKeyWindow && !w.isHidden) return w; }
+                if (ws.windows.count) return ws.windows.firstObject;
+            }
+        }
+    } @catch (__unused NSException *e) {}
+    @try {
+        for (UIWindow *w in app.windows) { if (w.isKeyWindow && !w.isHidden) return w; }
+        return app.windows.firstObject;
+    } @catch (__unused NSException *e) {}
+    return nil;
 }
 
-static BOOL gToasted = NO;
-static void writeOut(NSString *cookie, NSString *token) {
+// Toast trong app (giong deb goc). LUON goi tren MAIN thread.
+static void showToast(NSString *msg) {
+    @try {
+        UIWindow *win = frontWindow();
+        if (!win) return;
+        [[win viewWithTag:0x7B10] removeFromSuperview];
+        UILabel *lbl = [[UILabel alloc] init];
+        lbl.tag = 0x7B10;
+        lbl.text = msg;
+        lbl.numberOfLines = 0;
+        lbl.textColor = [UIColor whiteColor];
+        lbl.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.88];
+        lbl.textAlignment = NSTextAlignmentCenter;
+        lbl.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+        lbl.layer.cornerRadius = 12; lbl.clipsToBounds = YES;
+        lbl.userInteractionEnabled = NO;                 // khong chan tap cua app
+        CGFloat W = win.bounds.size.width - 40;
+        CGSize sz = [lbl sizeThatFits:CGSizeMake(W - 24, 600)];
+        lbl.frame = CGRectMake(20, 130, W, sz.height + 26);
+        lbl.alpha = 0;
+        [win addSubview:lbl];
+        __weak UILabel *wlbl = lbl;
+        [UIView animateWithDuration:0.25 animations:^{ UILabel *s=wlbl; if (s) s.alpha = 1; } completion:^(BOOL _f){
+            [UIView animateWithDuration:0.4 delay:3.5 options:0 animations:^{ UILabel *s=wlbl; if (s) s.alpha = 0; }
+                             completion:^(BOOL _f2){ UILabel *s=wlbl; if (s) [s removeFromSuperview]; }];
+        }];
+    } @catch (__unused NSException *e) {}
+}
+
+// Day ket qua ra clipboard + toast. Dieu phoi ve MAIN thread (UIKit chi tren main).
+static void deliver(NSString *cookie, NSString *token) {
     NSString *line = [NSString stringWithFormat:@"%@|%@", cookie ?: @"", token ?: @""];
-    @try { [UIPasteboard generalPasteboard].string = line; } @catch (__unused NSException *e) {} // xuat ra clipboard
-    if (!gToasted && token.length > 0) {
-        gToasted = YES;
-        NSString *head = token.length > 18 ? [token substringToIndex:18] : token;
+    NSString *head = token.length > 18 ? [token substringToIndex:18] : token;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        @try { [UIPasteboard generalPasteboard].string = line; } @catch (__unused NSException *e) {}
         showToast([NSString stringWithFormat:@"✅ FB Cookie & Token Copied\ntoken: %@...", head]);
-    }
+    });
 }
 
 static NSString *uidFromCookie(NSString *ck) {
@@ -149,26 +166,40 @@ static NSString *uidFromCookie(NSString *ck) {
     return i > s ? [ck substringWithRange:NSMakeRange(s, i - s)] : nil;
 }
 
+static dispatch_queue_t gQueue = NULL;     // serial queue nen (keychain/cookie khong chay main)
 static NSInteger gAttempts = 0;
-static void tryExtract(void) {
-    gAttempts++;
-    NSString *ck  = collectCookies();
-    NSString *uid = uidFromCookie(ck);
-    NSString *tok = uid.length ? tokenForUID(uid) : nil;   // CHI lay token khop acc hien tai
+static BOOL gDone = NO;
 
-    if (uid.length && tok.length) { writeOut(ck, tok); return; }    // du + khop acc -> xuat
-    if (gAttempts < 30) {                                           // chua du -> doi 2s thu lai
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)),
-                       dispatch_get_main_queue(), ^{ tryExtract(); });
-    } else if (!gToasted) {
-        // KHONG xuat token cu/sai acc. Bao de biet da thu ma chua co token khop.
-        showToast(@"⚠️ FBTokenExport: chua co token khop acc (khong xuat token cu)");
+static void tryExtract(void) {
+    @autoreleasepool {
+        if (gDone) return;
+        gAttempts++;
+        NSString *ck  = collectCookies();
+        NSString *uid = uidFromCookie(ck);
+        NSString *tok = uid.length ? tokenForUID(uid) : nil;   // CHI lay token khop acc hien tai
+
+        if (uid.length && tok.length) {                         // du + khop acc -> xuat
+            gDone = YES;
+            deliver(ck, tok);
+            return;
+        }
+        if (gAttempts < 30) {                                   // chua du -> doi 2s thu lai (tren queue nen)
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)),
+                           gQueue, ^{ tryExtract(); });
+        } else {
+            // KHONG xuat token cu/sai acc. Bao de biet da thu ma chua co token khop.
+            dispatch_async(dispatch_get_main_queue(), ^{
+                showToast(@"⚠️ FBTokenExport: chua co token khop acc (khong xuat token cu)");
+            });
+        }
     }
 }
 
 %ctor {
     @autoreleasepool {
+        gQueue = dispatch_queue_create("com.hoaqn.fbtokenexport.q", DISPATCH_QUEUE_SERIAL);
+        // delay 3s cho app init xong (keychain/cookie san sang), chay tren queue nen
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)),
-                       dispatch_get_main_queue(), ^{ tryExtract(); });
+                       gQueue, ^{ tryExtract(); });
     }
 }

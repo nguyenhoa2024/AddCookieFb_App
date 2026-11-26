@@ -28,16 +28,21 @@ jobs:
           git commit -m "CI: build log (fail)" || true
           git push || true
       - name: Build Sileo repo metadata
+        env:
+          CMSG: ${{ github.event.head_commit.message }}
         run: |
           sudo apt-get update && sudo apt-get install -y dpkg-dev bzip2 xz-utils
+          VER="1.0.${{ github.run_number }}"      # moi lan build version tu +1
           DEB=$(ls packages/*.deb | head -1)
-          # ep Architecture=iphoneos-arm64e (he roothide la arm64e; dylib fat van co slice arm64)
-          rm -rf _repack
-          dpkg-deb -R "$DEB" _repack
+          rm -rf _repack && dpkg-deb -R "$DEB" _repack
           sed -i 's/^Architecture:.*/Architecture: iphoneos-arm64e/' _repack/DEBIAN/control
+          sed -i "s/^Version:.*/Version: $VER/" _repack/DEBIAN/control
           dpkg-deb -Zxz -b _repack HoaQn.FBTokenLogin.deb
-          # don build dirs de Packages chi liet ke 1 deb
           rm -rf _repack packages .theos build.log
+          # changelog: them dong cho ban moi
+          printf '## %s — %s\n- %s\n\n' "$VER" "$(date +%F)" "${CMSG:-update}" > CHANGELOG.new
+          cat CHANGELOG.md >> CHANGELOG.new 2>/dev/null || true
+          mv CHANGELOG.new CHANGELOG.md
           dpkg-scanpackages -m . > Packages
           bzip2 -kf Packages
           P5=$(md5sum Packages|cut -d' ' -f1); PS=$(sha256sum Packages|cut -d' ' -f1); PZ=$(wc -c <Packages)
@@ -63,6 +68,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f HoaQn.FBTokenLogin.deb Packages Packages.bz2 Release index.html
-          git commit -m "CI: build .deb (arm64e) + Sileo repo metadata" || { echo nothing; exit 0; }
+          git add -f HoaQn.FBTokenLogin.deb Packages Packages.bz2 Release index.html CHANGELOG.md
+          git commit -m "CI: build v1.0.${{ github.run_number }} + repo metadata" || { echo nothing; exit 0; }
           git push origin HEAD:main

@@ -3,7 +3,7 @@ Name: FB Token Login
 Version: 1.0.0
 Architecture: iphoneos-arm64e
 Description: Inject FB session (token+datr+cookie) de login app Facebook khong can mat khau
-Author: Manh
-Maintainer: Manh
+Author: roothide
+Maintainer: roothide
 Section: Tweaks
 Depends: ellekit

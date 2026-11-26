@@ -2,7 +2,7 @@ Package: com.hoaqn.fbtokenexport
 Name: FB Token Export
 Version: 1.0.0
 Architecture: iphoneos-arm64e
-Description: Vao app Facebook la tu xuat cookie|token ra clipboard + toast (chong token cu)
+Description: Endpoint HTTP localhost 127.0.0.1:46980 trong app FB - XXTouch goi moi lay cookie|token (chong token cu), tra body + clipboard + toast
 Author: roothide
 Maintainer: roothide
 Section: Tweaks

@@ -1,13 +1,22 @@
-// FBTokenExport - inject vao com.facebook.Facebook, vao app la TU XUAT cookie|token
-// Doc access token (EAAAAA..., app id 6628568379) tu keychain cua chinh app
-// + gom cookie (c_user;xs;fr;datr;sb) tu NSHTTPCookieStorage.
-// XUAT ra CLIPBOARD (nhu ban goc): noi dung "<cookie>|<token>" + TOAST bao da xuat.
-// KHONG ghi file, KHONG XoaInfo, KHONG notification.
+// FBTokenExport - inject vao com.facebook.Facebook.
+// KHONG tu xuat khi vao app nua. Mo 1 endpoint HTTP localhost (127.0.0.1:46980):
+// CHI khi XXTouch goi http.get toi do thi tweak moi doc keychain + cookie va TRA
+// "<cookie>|<token>" trong body HTTP (kem set clipboard + toast de nhan biet).
+// Token EAAAAA (app id 6628568379) tu keychain cua chinh app, da khop dung acc
+// dang login (chong token cu). Cookie c_user;xs;fr;datr;sb tu NSHTTPCookieStorage.
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
 #import <UIKit/UIKit.h>
+#import <sys/socket.h>
+#import <netinet/in.h>
+#import <arpa/inet.h>
+#import <unistd.h>
+#import <errno.h>
+#import <string.h>
 
-// Quet chuoi, lay token EAA... (day nhat) - chiu duoc truong hop token nam trong blob/JSON
+static const int kPort = 46980;            // localhost endpoint, chi 127.0.0.1
+
+// Quet chuoi, lay token EAA... (day nhat) - chiu duoc token nam trong blob/JSON
 static NSString *pickToken(NSString *s) {
     if (s.length == 0) return nil;
     NSString *best = nil;
@@ -46,10 +55,9 @@ static NSString *acctToStr(id acct) {
 }
 
 // CHONG TOKEN CU: token phai thuoc dung uid (c_user) dang dang nhap.
-// Doc keychain kem kSecAttrAccount; uu tien token co account == wantUID.
 // - co token khop uid            -> dung (chac chan dung acc).
 // - khong khop nhung CHI 1 token  -> dung (khong the nham voi acc khac).
-// - nhieu token ma khong khop uid -> nil (tu choi xuat, tranh token acc cu).
+// - nhieu token ma khong khop uid -> nil (tu choi, tranh token acc cu).
 static NSString *tokenForUID(NSString *wantUID) {
     NSArray *services = @[@"com.facebook.graph", @"com.facebook.account.zmshimmed",
                           @"com.facebook.accountstatus", @"com.facebook.tim"];
@@ -97,6 +105,25 @@ static NSString *collectCookies(void) {
     return parts.count ? [parts componentsJoinedByString:@";"] : nil;
 }
 
+static NSString *uidFromCookie(NSString *ck) {
+    if (!ck) return nil;
+    NSRange r = [ck rangeOfString:@"c_user="];
+    if (r.location == NSNotFound) return nil;
+    NSUInteger i = r.location + r.length, s = i;
+    while (i < ck.length) { unichar c = [ck characterAtIndex:i]; if (c < '0' || c > '9') break; i++; }
+    return i > s ? [ck substringWithRange:NSMakeRange(s, i - s)] : nil;
+}
+
+// "<cookie>|<token>" (chi khi co du cookie + token khop acc), nil neu chua du.
+static NSString *buildPayload(void) {
+    NSString *ck  = collectCookies();
+    if (!ck.length) return nil;
+    NSString *uid = uidFromCookie(ck);
+    NSString *tok = uid.length ? tokenForUID(uid) : nil;
+    if (uid.length && tok.length) return [NSString stringWithFormat:@"%@|%@", ck, tok];
+    return nil;
+}
+
 // Tim window dang hien (iOS15: uu tien scene foreground, fallback .windows). MAIN thread.
 static UIWindow *frontWindow(void) {
     UIApplication *app = [UIApplication sharedApplication];
@@ -118,7 +145,7 @@ static UIWindow *frontWindow(void) {
     return nil;
 }
 
-// Toast trong app (giong deb goc). LUON goi tren MAIN thread.
+// Toast trong app. LUON goi tren MAIN thread.
 static void showToast(NSString *msg) {
     @try {
         UIWindow *win = frontWindow();
@@ -133,7 +160,7 @@ static void showToast(NSString *msg) {
         lbl.textAlignment = NSTextAlignmentCenter;
         lbl.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
         lbl.layer.cornerRadius = 12; lbl.clipsToBounds = YES;
-        lbl.userInteractionEnabled = NO;                 // khong chan tap cua app
+        lbl.userInteractionEnabled = NO;
         CGFloat W = win.bounds.size.width - 40;
         CGSize sz = [lbl sizeThatFits:CGSizeMake(W - 24, 600)];
         lbl.frame = CGRectMake(20, 130, W, sz.height + 26);
@@ -141,65 +168,76 @@ static void showToast(NSString *msg) {
         [win addSubview:lbl];
         __weak UILabel *wlbl = lbl;
         [UIView animateWithDuration:0.25 animations:^{ UILabel *s=wlbl; if (s) s.alpha = 1; } completion:^(BOOL _f){
-            [UIView animateWithDuration:0.4 delay:3.5 options:0 animations:^{ UILabel *s=wlbl; if (s) s.alpha = 0; }
+            [UIView animateWithDuration:0.4 delay:3.0 options:0 animations:^{ UILabel *s=wlbl; if (s) s.alpha = 0; }
                              completion:^(BOOL _f2){ UILabel *s=wlbl; if (s) [s removeFromSuperview]; }];
         }];
     } @catch (__unused NSException *e) {}
 }
 
-// Day ket qua ra clipboard + toast. Dieu phoi ve MAIN thread (UIKit chi tren main).
-static void deliver(NSString *cookie, NSString *token) {
-    NSString *line = [NSString stringWithFormat:@"%@|%@", cookie ?: @"", token ?: @""];
-    NSString *head = token.length > 18 ? [token substringToIndex:18] : token;
-    dispatch_async(dispatch_get_main_queue(), ^{
-        @try { [UIPasteboard generalPasteboard].string = line; } @catch (__unused NSException *e) {}
-        showToast([NSString stringWithFormat:@"✅ FB Cookie & Token Copied\ntoken: %@...", head]);
-    });
+// Gui HTTP response text roi dong (SO_NOSIGPIPE da set tren fd -> send khong raise SIGPIPE)
+static void sendResponse(int fd, int status, NSString *body) {
+    body = body ?: @"";
+    NSData *b = [body dataUsingEncoding:NSUTF8StringEncoding];
+    NSString *head = [NSString stringWithFormat:
+        @"HTTP/1.1 %d %@\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: %lu\r\nConnection: close\r\n\r\n",
+        status, (status == 200 ? @"OK" : @"Service Unavailable"), (unsigned long)b.length];
+    NSData *h = [head dataUsingEncoding:NSUTF8StringEncoding];
+    send(fd, h.bytes, h.length, 0);
+    if (b.length) send(fd, b.bytes, b.length, 0);
 }
 
-static NSString *uidFromCookie(NSString *ck) {
-    if (!ck) return nil;
-    NSRange r = [ck rangeOfString:@"c_user="];
-    if (r.location == NSNotFound) return nil;
-    NSUInteger i = r.location + r.length, s = i;
-    while (i < ck.length) { unichar c = [ck characterAtIndex:i]; if (c < '0' || c > '9') break; i++; }
-    return i > s ? [ck substringWithRange:NSMakeRange(s, i - s)] : nil;
-}
+// Server localhost: moi ket noi -> doc keychain/cookie (tren thread nay, KHONG main)
+// -> tra body + set clipboard + toast. Tu phuc hoi neu bind/listen loi.
+static void serverLoop(void) {
+    for (;;) {
+        int fd = socket(AF_INET, SOCK_STREAM, 0);
+        if (fd < 0) { sleep(3); continue; }
+        int yes = 1;
+        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+        struct sockaddr_in addr; memset(&addr, 0, sizeof(addr));
+        addr.sin_family = AF_INET;
+        addr.sin_port   = htons((uint16_t)kPort);
+        addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);          // chi 127.0.0.1
+        if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) { close(fd); sleep(3); continue; }
+        if (listen(fd, 4) < 0) { close(fd); sleep(3); continue; }
 
-static dispatch_queue_t gQueue = NULL;     // serial queue nen (keychain/cookie khong chay main)
-static NSInteger gAttempts = 0;
-static BOOL gDone = NO;
-
-static void tryExtract(void) {
-    @autoreleasepool {
-        if (gDone) return;
-        gAttempts++;
-        NSString *ck  = collectCookies();
-        NSString *uid = uidFromCookie(ck);
-        NSString *tok = uid.length ? tokenForUID(uid) : nil;   // CHI lay token khop acc hien tai
-
-        if (uid.length && tok.length) {                         // du + khop acc -> xuat
-            gDone = YES;
-            deliver(ck, tok);
-            return;
+        for (;;) {
+            int c = accept(fd, NULL, NULL);
+            if (c < 0) { if (errno == EINTR) continue; break; }
+            int on = 1; setsockopt(c, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on));
+            @autoreleasepool {
+                char buf[2048];
+                (void)recv(c, buf, sizeof(buf), 0);              // drain request, bo qua noi dung
+                NSString *payload = nil;
+                @try { payload = buildPayload(); } @catch (__unused NSException *e) {}
+                if (payload.length) {
+                    NSString *p = payload;
+                    NSString *tokHead = @"";
+                    NSRange bar = [p rangeOfString:@"|" options:NSBackwardsSearch];
+                    if (bar.location != NSNotFound) {
+                        NSString *t = [p substringFromIndex:bar.location + 1];
+                        tokHead = t.length > 18 ? [t substringToIndex:18] : t;
+                    }
+                    NSString *th = tokHead;
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        @try { [UIPasteboard generalPasteboard].string = p; } @catch (__unused NSException *e) {}
+                        showToast([NSString stringWithFormat:@"✅ FB Cookie|Token da tra (XXTouch goi)\ntoken: %@...", th]);
+                    });
+                    sendResponse(c, 200, payload);
+                } else {
+                    sendResponse(c, 503, @"");                    // chua du cookie/token khop acc
+                }
+            }
+            close(c);
         }
-        if (gAttempts < 30) {                                   // chua du -> doi 2s thu lai (tren queue nen)
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)),
-                           gQueue, ^{ tryExtract(); });
-        } else {
-            // KHONG xuat token cu/sai acc. Bao de biet da thu ma chua co token khop.
-            dispatch_async(dispatch_get_main_queue(), ^{
-                showToast(@"⚠️ FBTokenExport: chua co token khop acc (khong xuat token cu)");
-            });
-        }
+        close(fd);
+        sleep(2);
     }
 }
 
 %ctor {
     @autoreleasepool {
-        gQueue = dispatch_queue_create("com.hoaqn.fbtokenexport.q", DISPATCH_QUEUE_SERIAL);
-        // delay 3s cho app init xong (keychain/cookie san sang), chay tren queue nen
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)),
-                       gQueue, ^{ tryExtract(); });
+        // Mo server o thread nen, doi app va XXTouch goi toi moi lam viec.
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{ serverLoop(); });
     }
 }

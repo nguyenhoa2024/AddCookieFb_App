@@ -1,24 +1,36 @@
 # FBTokenExport
 
-Tweak iOS (roothide): **mở app Facebook là tự xuất `cookie|token` ra file**, không cần thao tác tay, không XoaInfo, không clipboard phụ thuộc.
+Tweak iOS (roothide): inject vào `com.facebook.Facebook`, mở **endpoint HTTP localhost** để XXTouch **gọi mới lấy** `cookie|token` — **không tự xuất khi vào app nữa**.
 
 ## Cơ chế
-Inject vào `com.facebook.Facebook`. Khi app mở, tweak:
-1. Đọc **access token** (`EAAAAA...`, app id 6628568379) từ keychain của chính app — query các service `com.facebook.graph`, `com.facebook.account.zmshimmed`, `com.facebook.accountstatus`, `com.facebook.tim` (kèm `kSecAttrAccount`). **Chống token cũ**: chỉ lấy token có `account == c_user` đang đăng nhập; nếu có nhiều token mà không khớp acc thì **không xuất** (tránh token acc cũ còn sót trong keychain). Chỉ 1 token duy nhất thì dùng luôn.
-2. Gom **cookie** (`c_user;xs;fr;datr;sb`) từ `NSHTTPCookieStorage`.
-3. **Xuất ra clipboard** (như deb gốc): nội dung `<cookie>|<token>`.
-4. **Toast trong app** "✅ FB Cookie & Token Copied — token: …" để biết đã chạy (giống deb gốc).
-5. Retry mỗi 2s tới ~60s (token keychain có sớm, cookie cần app init xong).
+Inject vào `com.facebook.Facebook`. Khi app chạy, tweak mở socket nghe tại **`127.0.0.1:46980`** (chỉ loopback, không ra ngoài mạng). Tweak **đứng im** cho tới khi có request:
 
-> Không ghi file (app FB bị sandbox không ghi ra path XXTouch được). XXTouch đọc **clipboard** — xem `GET_COOKIE_TOKEN_FB.lua`.
+1. XXTouch gọi `http.get("http://127.0.0.1:46980/...")`.
+2. Tweak mới đọc **access token** (`EAAAAA...`, app id 6628568379) từ keychain — service `com.facebook.graph`, `com.facebook.account.zmshimmed`, `com.facebook.accountstatus`, `com.facebook.tim` (kèm `kSecAttrAccount`). **Chống token cũ**: chỉ lấy token có `account == c_user` đang đăng nhập; nhiều token mà không khớp acc thì **không trả** (tránh token acc cũ còn sót). Chỉ 1 token duy nhất thì dùng luôn.
+3. Gom **cookie** (`c_user;xs;fr;datr;sb`) từ `NSHTTPCookieStorage`.
+4. **Trả `<cookie>|<token>` trong body HTTP** (200). Đồng thời set clipboard + **toast** "✅ FB Cookie|Token da tra (XXTouch goi)" để nhận biết.
+5. Chưa đủ cookie/token khớp acc → trả **503** (XXTouch retry).
 
-Khác tweak `fbextract` cũ: **bỏ XoaInfo / notification**, ghi thẳng file ở path XXTouch.
+> Đọc keychain/cookie chạy trên thread nền (thread accept), KHÔNG block main → không bị FB watchdog kill. Không đọc clipboard (tránh banner "pasted from" của iOS 14+). Toast trên main thread.
+
+Khác bản cũ: trước đây `%ctor` + delay tự xuất ra clipboard khi mở app; giờ **chỉ chạy khi XXTouch gọi endpoint**.
 
 ## Build (CI)
-Push `Tweak.xm`/`Makefile`/`control`/`*.plist` lên nhánh `main` → GitHub Actions (`Randomblock1/theos-action`) tự build và commit `HoaQn.FBTokenExport.deb` + metadata Sileo (`Packages`/`Release`) vào repo. Thêm URL repo (raw/Pages) vào Sileo để cài. Depends: `ellekit`.
+Push `Tweak.xm`/`Makefile`/`control`/`*.plist` lên `main` → GitHub Actions (`Randomblock1/theos-action`, scheme rootless) build `HoaQn.FBTokenExport.deb` + metadata Sileo vào repo `AddCookieFb_App`. Version bump độc lập với FBTokenLogin. Depends: `ellekit`.
 
-## Build tay
-Theos roothide: `export THEOS=~/theos && make package FINALPACKAGE=1`. Hoặc có sẵn `.dylib`: `sh build-deb.sh`.
+## Dùng (XXTouch) — gọi = 1 lệnh
+Cài `.deb` + respring. `get_cookie_token_fb()` là **1 lệnh one-shot**: gọi endpoint 1 lần, **trả ngay** kèm `status`, KHÔNG ngồi đợi. Caller tự lo FB đang chạy + foreground + đã login, rồi xử lý theo status:
 
-## Dùng (XXTouch)
-Cài `.deb` + respring. Chạy `GET_COOKIE_TOKEN_FB.lua`: nó mở FB, chờ file `fb_cookie_token.txt`, đọc + validate `c_user` + token `EAA`, trả `uid, cookie, token`. Ghép vào pipeline push tùy ý.
+```lua
+app.run("com.facebook.Facebook")          -- đảm bảo tweak nạp + FB foreground
+sys.msleep(3000)
+local uid, cookie, token, status = get_cookie_token_fb()
+-- status: "OK"        -> có cookie|token
+--         "NOT_READY" -> 503: CHƯA LOGIN / token chưa khớp acc  (đợi cũng vô ích, thoát ngay)
+--         "NO_EP"     -> gọi không được: FB chưa chạy/chưa foreground / chưa cài tweak
+--         "HTTP_xxx"  -> code lạ
+```
+
+Vì sao one-shot: trước đây hàm poll 60s, acc **chưa login** thì 503 liên tục rồi mới báo lỗi sau 60s. Giờ `NOT_READY` trả về tức thì để caller tự quyết (bỏ qua / thử lại sau / login tiếp). Chỉ nên warmup lặp cho `NO_EP` (app đang khởi động).
+
+Xem `Xuat_cookie_token_clip.lua`: mở FB → warmup endpoint tối đa ~15s (chỉ với `NO_EP`), `NOT_READY` thoát ngay → check live + push server. Endpoint trả trong body `<cookie>|<token>` (200) hoặc 503 khi chưa đủ; đồng thời set clipboard + toast.

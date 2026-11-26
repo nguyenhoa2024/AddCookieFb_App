@@ -5,8 +5,8 @@ Version: 1.0
 Codename: ios
 Architectures: iphoneos-arm64e
 Components: main
-Description: AddCookieFb - login FB app bang token
+Description: AddCookieFb - FBTokenLogin + FBTokenExport
 MD5Sum:
- f33b6688933ce08b066c2cff06681cdf 490 Packages
+ 98080da5ee4a451093d808c4a772bba2 965 Packages
 SHA256:
- 70311cfe0f21597d311273a91a76fc1ea953d62008e7ec6ef668d8376f8fcd7c 490 Packages
+ 4d6d68b321381ffb3f73e1fb80f4dc6ae03d15577d821692bcbd9693aed3cc75 965 Packages

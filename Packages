@@ -1,14 +1,30 @@
+Package: com.hoaqn.fbtokenexport
+Version: 1.0.16
+Architecture: iphoneos-arm64e
+Maintainer: roothide
+Installed-Size: 184
+Depends: ellekit
+Filename: ./HoaQn.FBTokenExport.deb
+Size: 8720
+MD5sum: e08afbd532a6e7a99dd8e8b2efce3261
+SHA1: 3b588c90cc98c65f27315f8f020e7bbddbd71381
+SHA256: e2c202308feaa22b1218751a3422a9b878d5ab85ad9ff44f5b387a841cc8b160
+Section: Tweaks
+Description: Vao app Facebook la tu xuat cookie|token ra file cho XXTouch
+Author: roothide
+Name: FB Token Export
+
 Package: com.hoaqn.fbtokenlogin
-Version: 1.0.15
+Version: 1.0.16
 Architecture: iphoneos-arm64e
 Maintainer: roothide
 Installed-Size: 184
 Depends: ellekit
 Filename: ./HoaQn.FBTokenLogin.deb
-Size: 7632
-MD5sum: 3218d9b1c815409e7cf1c9968df3de3c
-SHA1: 478df08b2046b5b3410e2683c1568a8bc9ef06b8
-SHA256: a266729f0e7f10d660cc1ba156eb57d977e198605b6618bae33e6d9695c6232e
+Size: 7668
+MD5sum: 77493aadc06f5bcde2305f3a69287ab5
+SHA1: ba9d316e9a5a1e9363dfd09a5102f4745b8999f8
+SHA256: 5a5486fd051b6725c8089e8ac2bee6a4514d5e48e967deda43df29c4a317f106
 Section: Tweaks
 Description: Inject FB session (token+datr+cookie) de login app Facebook khong can mat khau
 Author: roothide

@@ -1,3 +1,11 @@
+## 1.0.16 — 2026-11-26
+- Them tweak FBTokenExport (vao FB tu xuat cookie|token ra path XXTouch) + CI build chung 1 repo
+
+- fbexport/: project Theos rieng (ID com.hoaqn.fbtokenexport), khong dung FBTokenLogin
+- build.yml: build ca 2, dpkg-scanpackages liet ke 2 goi -> Sileo hien 2 tweak
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+
 ## 1.0.15 — 2026-11-26
 - Tweak: fast-path access() + build -Os/strip (nhe, khong leak); README dung nguon raw
 

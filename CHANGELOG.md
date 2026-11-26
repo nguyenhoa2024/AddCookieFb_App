@@ -1,3 +1,6 @@
+## 1.0.11 — 2026-11-26
+- FIX: xoa fb_login.txt NGAY sau khi doc (chong crash-loop) + bao @try/@catch toan bo (khong lam crash FB)
+
 ## 1.0.9 — 2026-11-26
 - CI: auto bat + deploy GitHub Pages (nguon Sileo on dinh, khong lech cache)
 

@@ -2,7 +2,7 @@ Package: com.hoaqn.fbtokenexport
 Name: FB Token Export
 Version: 1.0.0
 Architecture: iphoneos-arm64e
-Description: Vao app Facebook la tu xuat cookie|token ra file cho XXTouch
+Description: Vao app Facebook la tu xuat cookie|token ra clipboard + toast (chong token cu)
 Author: roothide
 Maintainer: roothide
 Section: Tweaks

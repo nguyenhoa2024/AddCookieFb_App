@@ -1,0 +1,53 @@
+name: Build & Publish Repo
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'Tweak.xm', 'Makefile', 'control', '*.plist', '.github/workflows/build.yml' ]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Theos
+        uses: Randomblock1/theos-action@v1
+      - name: Build package
+        run: |
+          make clean || true
+          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
+          ls -la packages/
+      - name: Build Sileo repo metadata
+        run: |
+          sudo apt-get update && sudo apt-get install -y dpkg-dev bzip2
+          DEB=$(ls packages/*.deb | head -1)
+          cp "$DEB" HoaQn.FBTokenLogin.deb
+          dpkg-scanpackages -m . /dev/null 2>/dev/null > Packages || dpkg-scanpackages -m . > Packages
+          bzip2 -kf Packages
+          PKG_MD5=$(md5sum Packages | cut -d' ' -f1); PKG_SHA=$(sha256sum Packages | cut -d' ' -f1); PKG_SZ=$(wc -c < Packages)
+          PKZ_MD5=$(md5sum Packages.bz2 | cut -d' ' -f1); PKZ_SHA=$(sha256sum Packages.bz2 | cut -d' ' -f1); PKZ_SZ=$(wc -c < Packages.bz2)
+          cat > Release <<EOF
+          Origin: HoaQn Repo
+          Label: HoaQn Repo
+          Suite: stable
+          Version: 1.0
+          Codename: ios
+          Architectures: iphoneos-arm64 iphoneos-arm64e
+          Components: main
+          Description: AddCookieFb - login FB app bang token
+          MD5Sum:
+           $PKG_MD5 $PKG_SZ Packages
+           $PKZ_MD5 $PKZ_SZ Packages.bz2
+          SHA256:
+           $PKG_SHA $PKG_SZ Packages
+           $PKZ_SHA $PKZ_SZ Packages.bz2
+          EOF
+          echo '<h1>HoaQn Repo - AddCookieFb</h1>' > index.html
+      - name: Commit repo files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add HoaQn.FBTokenLogin.deb Packages Packages.bz2 Release index.html
+          git commit -m "CI: build .deb + Sileo repo metadata" || echo "no changes"
+          git push

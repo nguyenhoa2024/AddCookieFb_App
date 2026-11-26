@@ -3,12 +3,12 @@ Label: HoaQn Repo
 Suite: stable
 Version: 1.0
 Codename: ios
-Architectures: iphoneos-arm64 iphoneos-arm64e
+Architectures: iphoneos-arm64e
 Components: main
 Description: AddCookieFb - login FB app bang token
 MD5Sum:
- 31c23365990751a6017e7d4e35c0675a 994 Packages
- f7744d3b06fe7b7337b2c1dde60abc53 513 Packages.bz2
+ 9dc6947eff37d4b7219b416d40e84343 481 Packages
+ 1ee57d52b6061a64f67e49b2b3b93598 401 Packages.bz2
 SHA256:
- aee07ce5dc4647dff8239141a37f587e3a212a442ac950c5e2ecfcced6773525 994 Packages
- e83140aa07a9266569aab241bcce2b7a5b2f4944a03331c129e65bd2b01fed8d 513 Packages.bz2
+ dd773f0956fdb9cc2a2595f5b493942027fe08090771b18460f69d45df378ee3 481 Packages
+ a815f198e36af2cd89196b296c74f3184973ff4c61f2c9c3179bc43c49f02b2e 401 Packages.bz2

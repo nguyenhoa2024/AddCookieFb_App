@@ -1,3 +1,8 @@
+## 1.0.18 — 2026-11-26
+- FBTokenExport: them toast trong app bao da xuat + ghi vao container (sandbox chan path XXTouch); reader doc tu container roi copy ra path XXTouch
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+
 ## 1.0.17 — 2026-11-26
 - CI: sinh Packages.gz + packages_list.txt + Release co Date/hash ca 2 file (giong format deb-ios-15)
 

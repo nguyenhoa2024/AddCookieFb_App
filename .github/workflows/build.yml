@@ -36,11 +36,10 @@ jobs:
           printf '## %s — %s\n- %s\n\n' "$VER" "$(date +%F)" "${CMSG:-update}" > CHANGELOG.new
           cat CHANGELOG.md >> CHANGELOG.new 2>/dev/null || true
           mv CHANGELOG.new CHANGELOG.md
+          # Chi 1 file Packages (khong nen) de tranh jsDelivr cache-skew giua cac file
+          rm -f Packages.bz2 Packages.gz
           dpkg-scanpackages -m . > Packages
-          bzip2 -kf Packages ; gzip -kf Packages
-          P5=$(md5sum Packages|cut -d' ' -f1);     PS=$(sha256sum Packages|cut -d' ' -f1);     PZ=$(wc -c <Packages)
-          B5=$(md5sum Packages.bz2|cut -d' ' -f1); BS=$(sha256sum Packages.bz2|cut -d' ' -f1); BZ=$(wc -c <Packages.bz2)
-          G5=$(md5sum Packages.gz|cut -d' ' -f1);  GS=$(sha256sum Packages.gz|cut -d' ' -f1);  GZ=$(wc -c <Packages.gz)
+          P5=$(md5sum Packages|cut -d' ' -f1); PS=$(sha256sum Packages|cut -d' ' -f1); PZ=$(wc -c <Packages)
           cat > Release <<EOF
           Origin: HoaQn Repo
           Label: HoaQn Repo
@@ -52,12 +51,8 @@ jobs:
           Description: AddCookieFb - login FB app bang token
           MD5Sum:
            $P5 $PZ Packages
-           $B5 $BZ Packages.bz2
-           $G5 $GZ Packages.gz
           SHA256:
            $PS $PZ Packages
-           $BS $BZ Packages.bz2
-           $GS $GZ Packages.gz
           EOF
           echo '<h1>HoaQn Repo - AddCookieFb</h1>' > index.html
           # ky GPG repo (InRelease clearsign + Release.gpg detached) de apt/Sileo chap nhan
@@ -74,11 +69,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f HoaQn.FBTokenLogin.deb Packages Packages.bz2 Packages.gz Release Release.gpg InRelease hoaqn.gpg index.html CHANGELOG.md
+          git add -f HoaQn.FBTokenLogin.deb Packages Release Release.gpg InRelease hoaqn.gpg index.html CHANGELOG.md
           git commit -m "CI: build v1.0.${{ github.run_number }}" || echo nothing
           git push origin HEAD:main || true
       - name: Purge jsDelivr
         if: always()
         run: |
           B="https://purge.jsdelivr.net/gh/nguyenhoa2024/AddCookieFb_App@main"
-          for f in Release Release.gpg InRelease Packages Packages.bz2 Packages.gz HoaQn.FBTokenLogin.deb hoaqn.gpg; do curl -s -o /dev/null "$B/$f" || true; done
+          for f in Release Release.gpg InRelease Packages HoaQn.FBTokenLogin.deb hoaqn.gpg; do curl -s -o /dev/null "$B/$f" || true; done

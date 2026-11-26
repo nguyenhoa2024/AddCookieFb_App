@@ -17,40 +17,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # can full history de dem commit tung tweak
       - name: Setup Theos
         uses: Randomblock1/theos-action@v1
       - name: Build packages (ca 2 tweak)
         run: |
           set -o pipefail
-          # 1) FBTokenLogin (root) - giu nguyen
           make clean || true
           make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           cp "$(ls packages/*.deb | head -1)" login.deb
-          # 2) FBTokenExport (fbexport/)
           make -C fbexport clean || true
           make -C fbexport package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           cp "$(ls fbexport/packages/*.deb | head -1)" export.deb
-      - name: Build Sileo repo metadata (giong format deb-ios-15)
+      - name: Build Sileo repo metadata (version doc lap moi tweak)
         env:
           CMSG: ${{ github.event.head_commit.message }}
         run: |
           sudo apt-get update && sudo apt-get install -y dpkg-dev
-          VER="1.0.${{ github.run_number }}"
-          repack() {
+          # Version RIENG tung tweak = so commit cham file cua chinh no.
+          # Chi tweak nao co commit sua moi tang version; tweak kia giu nguyen.
+          # Base 1.1 de luon > 1.0.x cu (tranh bi coi la ha cap).
+          LVER="1.1.$(git rev-list --count HEAD -- Tweak.xm Makefile control FBTokenLogin.plist)"
+          EVER="1.1.$(git rev-list --count HEAD -- fbexport)"
+          echo "LVER=$LVER" >> "$GITHUB_ENV"; echo "EVER=$EVER" >> "$GITHUB_ENV"
+          echo "FBTokenLogin=$LVER  FBTokenExport=$EVER"
+          repack() {   # $1 deb-nguon  $2 deb-ra  $3 version
             rm -rf _repack
             dpkg-deb -R "$1" _repack
             sed -i 's/^Architecture:.*/Architecture: iphoneos-arm64e/' _repack/DEBIAN/control
-            sed -i "s/^Version:.*/Version: $VER/" _repack/DEBIAN/control
+            sed -i "s/^Version:.*/Version: $3/" _repack/DEBIAN/control
             dpkg-deb -Zxz -b _repack "$2"
             rm -rf _repack
           }
-          repack login.deb  HoaQn.FBTokenLogin.deb
-          repack export.deb HoaQn.FBTokenExport.deb
+          repack login.deb  HoaQn.FBTokenLogin.deb  "$LVER"
+          repack export.deb HoaQn.FBTokenExport.deb "$EVER"
           rm -rf packages fbexport/packages .theos fbexport/.theos build.log login.deb export.deb
-          printf '## %s — %s\n- %s\n\n' "$VER" "$(date +%F)" "${CMSG:-update}" > CHANGELOG.new
+          printf '## %s — FBTokenLogin %s / FBTokenExport %s\n- %s\n\n' "$(date +%F)" "$LVER" "$EVER" "${CMSG:-update}" > CHANGELOG.new
           cat CHANGELOG.md >> CHANGELOG.new 2>/dev/null || true
           mv CHANGELOG.new CHANGELOG.md
-
           # Packages + Packages.gz
           dpkg-scanpackages -m . > Packages
           gzip -9 -c Packages > Packages.gz
@@ -61,7 +66,7 @@ jobs:
             A=$(dpkg-deb -f "$d" Architecture); D=$(dpkg-deb -f "$d" Description)
             printf 'ii  %-56s %-25s %s %s\n' "$P" "$V" "$A" "$D" >> packages_list.txt
           done
-          # Release (co Date + hash ca Packages va Packages.gz)
+          # Release (Date + hash ca Packages va Packages.gz)
           P5=$(md5sum Packages|cut -d' ' -f1);    PS=$(sha256sum Packages|cut -d' ' -f1);    PZ=$(wc -c <Packages)
           G5=$(md5sum Packages.gz|cut -d' ' -f1); GS=$(sha256sum Packages.gz|cut -d' ' -f1); GZ=$(wc -c <Packages.gz)
           cat > Release <<EOF
@@ -87,7 +92,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f HoaQn.FBTokenLogin.deb HoaQn.FBTokenExport.deb Packages Packages.gz packages_list.txt Release index.html CHANGELOG.md
-          git commit -m "CI: build v1.0.${{ github.run_number }}" || echo nothing
+          git commit -m "CI: FBTokenLogin $LVER, FBTokenExport $EVER" || echo nothing
           git push origin HEAD:main || true
       - name: Purge jsDelivr
         if: always()

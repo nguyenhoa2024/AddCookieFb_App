@@ -1,6 +1,5 @@
 .theos/
 packages/
-pkgroot/
 obj/
-*.deb
-debs/*.deb
+pkgroot/
+build.log

@@ -57,10 +57,9 @@ jobs:
           echo '<h1>HoaQn Repo - AddCookieFb</h1>' > index.html
       - name: Commit repo files
         run: |
+          rm -f build.log
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          rm -f build.log
-          git rm --cached build.log 2>/dev/null || true
-          git add HoaQn.FBTokenLogin.deb Packages Packages.bz2 Release index.html
-          git commit -m "CI: build .deb + Sileo repo metadata" || echo "no changes"
-          git push
+          git add -f HoaQn.FBTokenLogin.deb Packages Packages.bz2 Release index.html
+          git commit -m "CI: build .deb + Sileo repo metadata" || { echo "nothing"; exit 0; }
+          git push origin HEAD:main

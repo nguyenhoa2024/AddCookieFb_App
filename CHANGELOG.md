@@ -1,3 +1,8 @@
+## 1.0.19 — 2026-11-26
+- FBTokenExport: xuat ra clipboard nhu ban goc (bo ghi file) + toast "FB Cookie & Token Copied"; reader doc tu clipboard
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+
 ## 1.0.18 — 2026-11-26
 - FBTokenExport: them toast trong app bao da xuat + ghi vao container (sandbox chan path XXTouch); reader doc tu container roi copy ra path XXTouch
 

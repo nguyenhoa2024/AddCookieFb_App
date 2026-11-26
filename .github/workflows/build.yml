@@ -6,11 +6,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
-  pages: write
-  id-token: write
-concurrency:
-  group: pages
-  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -62,34 +57,15 @@ jobs:
            $GS $GZ Packages.gz
           EOF
           echo '<h1>HoaQn Repo - AddCookieFb</h1>' > index.html
-          mkdir -p _site
-          cp HoaQn.FBTokenLogin.deb Packages Packages.bz2 Packages.gz Release index.html _site/
       - name: Commit repo files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f HoaQn.FBTokenLogin.deb Packages Packages.bz2 Packages.gz Release index.html CHANGELOG.md
-          git commit -m "CI: build v1.0.${{ github.run_number }} + repo metadata" || echo nothing
+          git commit -m "CI: build v1.0.${{ github.run_number }}" || echo nothing
           git push origin HEAD:main || true
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-      - name: Purge jsDelivr cache
+      - name: Purge jsDelivr
+        if: always()
         run: |
           B="https://purge.jsdelivr.net/gh/nguyenhoa2024/AddCookieFb_App@main"
           for f in Release Packages Packages.bz2 Packages.gz HoaQn.FBTokenLogin.deb; do curl -s -o /dev/null "$B/$f" || true; done
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to Pages
-        id: deployment
-        uses: actions/deploy-pages@v4

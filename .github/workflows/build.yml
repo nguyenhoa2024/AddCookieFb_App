@@ -14,19 +14,30 @@ jobs:
       - name: Setup Theos
         uses: Randomblock1/theos-action@v1
       - name: Build package
+        id: build
         run: |
+          set -o pipefail
           make clean || true
-          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
-          ls -la packages/
+          make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless 2>&1 | tee build.log
+          echo "--- packages dir ---" | tee -a build.log
+          ls -la packages/ 2>&1 | tee -a build.log || true
+      - name: Commit build log on failure
+        if: failure()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add build.log || true
+          git commit -m "CI: build log (fail)" || true
+          git push || true
       - name: Build Sileo repo metadata
         run: |
           sudo apt-get update && sudo apt-get install -y dpkg-dev bzip2
           DEB=$(ls packages/*.deb | head -1)
           cp "$DEB" HoaQn.FBTokenLogin.deb
-          dpkg-scanpackages -m . /dev/null 2>/dev/null > Packages || dpkg-scanpackages -m . > Packages
+          dpkg-scanpackages -m . > Packages
           bzip2 -kf Packages
-          PKG_MD5=$(md5sum Packages | cut -d' ' -f1); PKG_SHA=$(sha256sum Packages | cut -d' ' -f1); PKG_SZ=$(wc -c < Packages)
-          PKZ_MD5=$(md5sum Packages.bz2 | cut -d' ' -f1); PKZ_SHA=$(sha256sum Packages.bz2 | cut -d' ' -f1); PKZ_SZ=$(wc -c < Packages.bz2)
+          P5=$(md5sum Packages|cut -d' ' -f1); PS=$(sha256sum Packages|cut -d' ' -f1); PZ=$(wc -c <Packages)
+          B5=$(md5sum Packages.bz2|cut -d' ' -f1); BS=$(sha256sum Packages.bz2|cut -d' ' -f1); BZ=$(wc -c <Packages.bz2)
           cat > Release <<EOF
           Origin: HoaQn Repo
           Label: HoaQn Repo
@@ -37,17 +48,19 @@ jobs:
           Components: main
           Description: AddCookieFb - login FB app bang token
           MD5Sum:
-           $PKG_MD5 $PKG_SZ Packages
-           $PKZ_MD5 $PKZ_SZ Packages.bz2
+           $P5 $PZ Packages
+           $B5 $BZ Packages.bz2
           SHA256:
-           $PKG_SHA $PKG_SZ Packages
-           $PKZ_SHA $PKZ_SZ Packages.bz2
+           $PS $PZ Packages
+           $BS $BZ Packages.bz2
           EOF
           echo '<h1>HoaQn Repo - AddCookieFb</h1>' > index.html
       - name: Commit repo files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          rm -f build.log
+          git rm --cached build.log 2>/dev/null || true
           git add HoaQn.FBTokenLogin.deb Packages Packages.bz2 Release index.html
           git commit -m "CI: build .deb + Sileo repo metadata" || echo "no changes"
           git push

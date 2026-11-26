@@ -14,26 +14,30 @@ jobs:
       - name: Setup Theos
         uses: Randomblock1/theos-action@v1
       - name: Build package
-        id: build
         run: |
           set -o pipefail
           make clean || true
           make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless 2>&1 | tee build.log
-          echo "--- packages dir ---" | tee -a build.log
-          ls -la packages/ 2>&1 | tee -a build.log || true
+          ls -la packages/ | tee -a build.log
       - name: Commit build log on failure
         if: failure()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add build.log || true
+          git add -f build.log || true
           git commit -m "CI: build log (fail)" || true
           git push || true
       - name: Build Sileo repo metadata
         run: |
-          sudo apt-get update && sudo apt-get install -y dpkg-dev bzip2
+          sudo apt-get update && sudo apt-get install -y dpkg-dev bzip2 xz-utils
           DEB=$(ls packages/*.deb | head -1)
-          cp "$DEB" HoaQn.FBTokenLogin.deb
+          # ep Architecture=iphoneos-arm64e (he roothide la arm64e; dylib fat van co slice arm64)
+          rm -rf _repack
+          dpkg-deb -R "$DEB" _repack
+          sed -i 's/^Architecture:.*/Architecture: iphoneos-arm64e/' _repack/DEBIAN/control
+          dpkg-deb -Zxz -b _repack HoaQn.FBTokenLogin.deb
+          # don build dirs de Packages chi liet ke 1 deb
+          rm -rf _repack packages .theos build.log
           dpkg-scanpackages -m . > Packages
           bzip2 -kf Packages
           P5=$(md5sum Packages|cut -d' ' -f1); PS=$(sha256sum Packages|cut -d' ' -f1); PZ=$(wc -c <Packages)
@@ -44,7 +48,7 @@ jobs:
           Suite: stable
           Version: 1.0
           Codename: ios
-          Architectures: iphoneos-arm64 iphoneos-arm64e
+          Architectures: iphoneos-arm64e
           Components: main
           Description: AddCookieFb - login FB app bang token
           MD5Sum:
@@ -57,9 +61,8 @@ jobs:
           echo '<h1>HoaQn Repo - AddCookieFb</h1>' > index.html
       - name: Commit repo files
         run: |
-          rm -f build.log
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f HoaQn.FBTokenLogin.deb Packages Packages.bz2 Release index.html
-          git commit -m "CI: build .deb + Sileo repo metadata" || { echo "nothing"; exit 0; }
+          git commit -m "CI: build .deb (arm64e) + Sileo repo metadata" || { echo nothing; exit 0; }
           git push origin HEAD:main

@@ -2,7 +2,13 @@ name: Build & Publish Repo
 on:
   push:
     branches: [ main ]
-    paths: [ 'Tweak.xm', 'Makefile', 'control', '*.plist', '.github/workflows/build.yml' ]
+    paths:
+      - 'Tweak.xm'
+      - 'Makefile'
+      - 'control'
+      - '*.plist'
+      - 'fbexport/**'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
 permissions:
   contents: write
@@ -13,23 +19,34 @@ jobs:
       - uses: actions/checkout@v4
       - name: Setup Theos
         uses: Randomblock1/theos-action@v1
-      - name: Build package
+      - name: Build packages (ca 2 tweak)
         run: |
           set -o pipefail
+          # 1) FBTokenLogin (root) - giu nguyen
           make clean || true
           make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
+          cp "$(ls packages/*.deb | head -1)" login.deb
+          # 2) FBTokenExport (fbexport/)
+          make -C fbexport clean || true
+          make -C fbexport package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
+          cp "$(ls fbexport/packages/*.deb | head -1)" export.deb
       - name: Build Sileo repo metadata
         env:
           CMSG: ${{ github.event.head_commit.message }}
         run: |
           sudo apt-get update && sudo apt-get install -y dpkg-dev
           VER="1.0.${{ github.run_number }}"
-          DEB=$(ls packages/*.deb | head -1)
-          rm -rf _repack && dpkg-deb -R "$DEB" _repack
-          sed -i 's/^Architecture:.*/Architecture: iphoneos-arm64e/' _repack/DEBIAN/control
-          sed -i "s/^Version:.*/Version: $VER/" _repack/DEBIAN/control
-          dpkg-deb -Zxz -b _repack HoaQn.FBTokenLogin.deb
-          rm -rf _repack packages .theos build.log
+          repack() {
+            rm -rf _repack
+            dpkg-deb -R "$1" _repack
+            sed -i 's/^Architecture:.*/Architecture: iphoneos-arm64e/' _repack/DEBIAN/control
+            sed -i "s/^Version:.*/Version: $VER/" _repack/DEBIAN/control
+            dpkg-deb -Zxz -b _repack "$2"
+            rm -rf _repack
+          }
+          repack login.deb  HoaQn.FBTokenLogin.deb
+          repack export.deb HoaQn.FBTokenExport.deb
+          rm -rf packages fbexport/packages .theos fbexport/.theos build.log login.deb export.deb
           printf '## %s — %s\n- %s\n\n' "$VER" "$(date +%F)" "${CMSG:-update}" > CHANGELOG.new
           cat CHANGELOG.md >> CHANGELOG.new 2>/dev/null || true
           mv CHANGELOG.new CHANGELOG.md
@@ -45,7 +62,7 @@ jobs:
           Codename: ios
           Architectures: iphoneos-arm64e
           Components: main
-          Description: AddCookieFb - login FB app bang token
+          Description: AddCookieFb - FBTokenLogin + FBTokenExport
           MD5Sum:
            $P5 $PZ Packages
           SHA256:
@@ -56,11 +73,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f HoaQn.FBTokenLogin.deb Packages Release index.html CHANGELOG.md
+          git add -f HoaQn.FBTokenLogin.deb HoaQn.FBTokenExport.deb Packages Release index.html CHANGELOG.md
           git commit -m "CI: build v1.0.${{ github.run_number }}" || echo nothing
           git push origin HEAD:main || true
       - name: Purge jsDelivr
         if: always()
         run: |
           B="https://purge.jsdelivr.net/gh/nguyenhoa2024/AddCookieFb_App@main"
-          for f in Release Packages HoaQn.FBTokenLogin.deb; do curl -s -o /dev/null "$B/$f" || true; done
+          for f in Release Packages HoaQn.FBTokenLogin.deb HoaQn.FBTokenExport.deb; do curl -s -o /dev/null "$B/$f" || true; done

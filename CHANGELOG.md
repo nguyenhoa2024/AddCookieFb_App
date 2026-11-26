@@ -1,3 +1,8 @@
+## 1.0.17 — 2026-11-26
+- CI: sinh Packages.gz + packages_list.txt + Release co Date/hash ca 2 file (giong format deb-ios-15)
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+
 ## 1.0.16 — 2026-11-26
 - Them tweak FBTokenExport (vao FB tu xuat cookie|token ra path XXTouch) + CI build chung 1 repo
 

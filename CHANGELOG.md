@@ -1,3 +1,8 @@
+## 1.0.20 — 2026-11-26
+- FBTokenExport: chong token cu - chi xuat token keychain co account == c_user dang login; nhieu token khong khop -> khong xuat
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+
 ## 1.0.19 — 2026-11-26
 - FBTokenExport: xuat ra clipboard nhu ban goc (bo ghi file) + toast "FB Cookie & Token Copied"; reader doc tu clipboard
 

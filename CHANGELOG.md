@@ -1,3 +1,6 @@
+## 1.0.7 — 2026-11-26
+- Author=roothide; version tu tang theo run_number; CI tu ghi CHANGELOG moi ban
+
 # Changelog — HoaQn.FBTokenLogin
 
 Phiên bản tự tăng mỗi lần build (CI). Ghi chú theo từng bản bên dưới.

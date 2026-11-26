@@ -1,3 +1,8 @@
+## 2026-11-26 — FBTokenLogin 1.1.7 / FBTokenExport 1.1.6
+- FBTokenExport: chong crash/respring - keychain+cookie chay queue nen (khong block main/watchdog), toast tim window qua connectedScenes + @try, userInteractionEnabled=NO, weak ref tranh retain
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+
 ## 2026-11-26 — FBTokenLogin 1.1.7 / FBTokenExport 1.1.5
 - FBTokenExport: sua Description cho dung (clipboard + toast, chong token cu)
 

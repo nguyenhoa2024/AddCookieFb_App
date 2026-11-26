@@ -1,14 +1,14 @@
 Package: com.hoaqn.fbtokenexport
-Version: 1.1.5
+Version: 1.1.6
 Architecture: iphoneos-arm64e
 Maintainer: roothide
 Installed-Size: 188
 Depends: ellekit
 Filename: ./HoaQn.FBTokenExport.deb
-Size: 10692
-MD5sum: aadcc1866d0d9bd35a446bc0aecacd3e
-SHA1: 7d90b6b9e04d98e34ff05c0a4d6964f035774e55
-SHA256: 68df8a4debb88a9c439d36ae23238d6822b127f7f5eb087dab4cab2a7230cf3b
+Size: 12104
+MD5sum: 78c8dfa10a289ec2c9b35c005d76df91
+SHA1: 204679840c14fd10a7f51c9074ceae0c885ff311
+SHA256: 4dfb635a21bd4a84f312e933d31dfad2dcbcf4a078e2097f3a32c3fe56f5c880
 Section: Tweaks
 Description: Vao app Facebook la tu xuat cookie|token ra clipboard + toast (chong token cu)
 Author: roothide
@@ -21,10 +21,10 @@ Maintainer: roothide
 Installed-Size: 184
 Depends: ellekit
 Filename: ./HoaQn.FBTokenLogin.deb
-Size: 7628
-MD5sum: a6d4430b0586b49b3b10b78bd56ee4a6
-SHA1: e9b339de4aa7a7a35d45db29824d140db4920842
-SHA256: 914f265966084bfeac6806838e653dd4230a4245b8382bb4fc4e9112530c2e13
+Size: 7632
+MD5sum: 9bbb626183a12faffa4f02d16c9f7b7c
+SHA1: a420a4060ffb4604943a7924d0c7f86ba05a96e5
+SHA256: dd2d46d302ff980327e5ed08d6777846a5a3e8b64a7bf83344164089680dbcd4
 Section: Tweaks
 Description: Inject FB session (token+datr+cookie) de login app Facebook khong can mat khau
 Author: roothide

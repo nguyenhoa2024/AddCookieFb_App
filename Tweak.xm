@@ -3,6 +3,7 @@
 // AN TOAN: xoa file NGAY sau khi doc (tranh crash-loop neu inject loi) + bao @try/@catch (khong lam crash FB).
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
+#import <unistd.h>
 
 static void kcSet(NSString *svc, NSString *agrp, CFTypeRef access, id account, NSData *data) {
     @try {
@@ -71,8 +72,10 @@ static NSString* pickToken(NSString *s) {
         @try {
             NSString *home = NSHomeDirectory();
             NSString *path = [home stringByAppendingPathComponent:@"Documents/fb_login.txt"];
+            // FAST-PATH: 99% lan mo FB khong co file -> thoat bang 1 syscall, khong cap phat gi
+            if (access(path.fileSystemRepresentation, F_OK) != 0) return;
             NSString *raw  = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:nil];
-            if (raw.length == 0) return;                       // khong co acc -> khong lam gi
+            if (raw.length == 0) { [[NSFileManager defaultManager] removeItemAtPath:path error:nil]; return; }
             // *** XOA FILE NGAY (chong crash-loop): du phia duoi loi, lan mo sau se khong retry ***
             [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
 

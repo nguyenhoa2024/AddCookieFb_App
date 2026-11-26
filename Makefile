@@ -8,6 +8,7 @@ include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = FBTokenLogin
 FBTokenLogin_FILES = Tweak.xm
 FBTokenLogin_FRAMEWORKS = Foundation Security
-FBTokenLogin_CFLAGS = -fobjc-arc
+FBTokenLogin_CFLAGS = -fobjc-arc -Os -fvisibility=hidden
+FBTokenLogin_LDFLAGS = -Wl,-x
 
 include $(THEOS)/makefiles/tweak.mk

@@ -46,10 +46,12 @@ Ra file `.deb` trong `packages/`. (Hoặc nếu đã có `FBTokenLogin.dylib` bu
 Chạy hàng loạt: lặp qua danh sách acc, mỗi acc gọi deploy rồi mở app, kiểm tra kết quả, logout (xoá 3 keychain + file) trước acc tiếp theo.
 
 ## Nguồn Sileo
-Repo build sẵn qua GitHub Actions, phục vụ qua jsDelivr. Thêm nguồn này vào Sileo:
+Repo build sẵn qua GitHub Actions. **Thêm nguồn này vào Sileo** (dùng raw GitHub — luôn mới, không bao giờ cache-skew):
 ```
-https://cdn.jsdelivr.net/gh/nguyenhoa2024/AddCookieFb_App@main/
+https://raw.githubusercontent.com/nguyenhoa2024/AddCookieFb_App/main/
 ```
-Repo không ký (chuẩn repo jB cá nhân). Sileo roothide thêm xong có thể hiện cảnh báo "untrusted repo" — bấm qua là cài được. Rồi cài gói **FB Token Login**.
+Repo **không ký** (chuẩn repo jB cá nhân). Sileo roothide thêm xong có thể hiện cảnh báo "untrusted repo" — bấm qua là cài được. Rồi cài gói **FB Token Login**.
 
-Repo chỉ serve 1 file index `Packages` (không bz2/gz) để tránh jsDelivr cache-skew gây lỗi "Hash invalid".
+> jsDelivr (`cdn.jsdelivr.net/gh/nguyenhoa2024/AddCookieFb_App@main/`) cũng chạy nhưng **cache lệch khó lường** (file xoá vẫn serve bản cũ → lỗi "Hash invalid"/"not signed"). Dùng raw cho chắc.
+>
+> Repo chỉ serve 1 index `Packages` (bỏ bz2/gz) để tránh skew.

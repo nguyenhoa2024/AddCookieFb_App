@@ -45,9 +45,16 @@ Ra file `.deb` trong `packages/`. (Hoặc nếu đã có `FBTokenLogin.dylib` bu
 
 Chạy hàng loạt: lặp qua danh sách acc, mỗi acc gọi deploy rồi mở app, kiểm tra kết quả, logout (xoá 3 keychain + file) trước acc tiếp theo.
 
-## Đưa lên repo Sileo
-Repo = thư mục tĩnh (GitHub Pages / host bất kỳ) gồm `Packages`, `Packages.bz2`, `Release`, và thư mục `debs/`. Script `make-repo.sh` tạo metadata:
+## Nguồn Sileo (đã ký GPG)
+Repo build sẵn qua GitHub Actions, phục vụ qua jsDelivr:
 ```
-sh make-repo.sh    # cần dpkg-scanpackages (trên máy build) hoặc dpkg-deb
+https://cdn.jsdelivr.net/gh/nguyenhoa2024/AddCookieFb_App@main/
 ```
-Rồi push toàn bộ lên GitHub; thêm URL repo vào Sileo trên các máy.
+Repo **được ký GPG** (`Release.gpg` + `InRelease`, public key `hoaqn.gpg`) nên apt/Sileo roothide nhận nguồn không báo "not signed". Cài nguồn 1 lần/máy (qua SSH):
+```
+curl -fsSL https://cdn.jsdelivr.net/gh/nguyenhoa2024/AddCookieFb_App@main/install-repo.sh | sh
+```
+Script tải public key vào `/var/jb/etc/apt/keyrings/hoaqn.gpg` và thêm source dùng `Signed-By` (trust đúng phạm vi repo này, không tắt verify toàn cục). Xong mở Sileo cài **FB Token Login**.
+
+### CI tự ký (bắt buộc cho các bản build sau)
+Thêm GitHub secret **`REPO_GPG_PRIVATE_KEY`** = private key ASCII-armored (key `HoaQn Repo <repo@hoaqn.local>`). Mỗi lần CI build sẽ tự sinh `Release.gpg`/`InRelease`. Thiếu secret thì bản build mới ra nguồn **không ký** → lại lỗi "not signed".

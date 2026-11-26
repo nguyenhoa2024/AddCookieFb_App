@@ -1,2 +1,2 @@
 ii  com.hoaqn.fbtokenlogin                                   1.1.7                     iphoneos-arm64e Inject FB session (token+datr+cookie) de login app Facebook khong can mat khau
-ii  com.hoaqn.fbtokenexport                                  1.1.4                     iphoneos-arm64e Vao app Facebook la tu xuat cookie|token ra file cho XXTouch
+ii  com.hoaqn.fbtokenexport                                  1.1.5                     iphoneos-arm64e Vao app Facebook la tu xuat cookie|token ra clipboard + toast (chong token cu)

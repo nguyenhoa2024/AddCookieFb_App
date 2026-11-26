@@ -1,3 +1,8 @@
+## 2026-11-26 — FBTokenLogin 1.1.7 / FBTokenExport 1.1.5
+- FBTokenExport: sua Description cho dung (clipboard + toast, chong token cu)
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+
 ## 2026-11-26 — FBTokenLogin 1.1.7 / FBTokenExport 1.1.4
 - CI: version doc lap moi tweak (git rev-list --count tung path), base 1.1 > 1.0.x cu; chi tweak co commit moi tang version
 

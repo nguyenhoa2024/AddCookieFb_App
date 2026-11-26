@@ -45,8 +45,10 @@ jobs:
           mv CHANGELOG.new CHANGELOG.md
           dpkg-scanpackages -m . > Packages
           bzip2 -kf Packages
+          gzip -kf Packages
           P5=$(md5sum Packages|cut -d' ' -f1); PS=$(sha256sum Packages|cut -d' ' -f1); PZ=$(wc -c <Packages)
           B5=$(md5sum Packages.bz2|cut -d' ' -f1); BS=$(sha256sum Packages.bz2|cut -d' ' -f1); BZ=$(wc -c <Packages.bz2)
+          G5=$(md5sum Packages.gz|cut -d" " -f1); GS=$(sha256sum Packages.gz|cut -d" " -f1); GZ=$(wc -c <Packages.gz)
           cat > Release <<EOF
           Origin: HoaQn Repo
           Label: HoaQn Repo
@@ -59,15 +61,23 @@ jobs:
           MD5Sum:
            $P5 $PZ Packages
            $B5 $BZ Packages.bz2
+           $G5 $GZ Packages.gz
           SHA256:
            $PS $PZ Packages
            $BS $BZ Packages.bz2
+           $GS $GZ Packages.gz
           EOF
           echo '<h1>HoaQn Repo - AddCookieFb</h1>' > index.html
       - name: Commit repo files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f HoaQn.FBTokenLogin.deb Packages Packages.bz2 Release index.html CHANGELOG.md
+          git add -f HoaQn.FBTokenLogin.deb Packages Packages.bz2 Packages.gz Release index.html CHANGELOG.md
           git commit -m "CI: build v1.0.${{ github.run_number }} + repo metadata" || { echo nothing; exit 0; }
           git push origin HEAD:main
+      - name: Purge jsDelivr cache
+        run: |
+          B="https://purge.jsdelivr.net/gh/nguyenhoa2024/AddCookieFb_App@main"
+          for f in Release Packages Packages.bz2 Packages.gz HoaQn.FBTokenLogin.deb; do
+            curl -s -o /dev/null "$B/$f" || true
+          done

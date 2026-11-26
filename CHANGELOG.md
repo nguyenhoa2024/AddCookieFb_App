@@ -1,3 +1,8 @@
+## 1.0.15 — 2026-11-26
+- Tweak: fast-path access() + build -Os/strip (nhe, khong leak); README dung nguon raw
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+
 ## 1.0.14 — 2026-11-26
 - Go GPG: nguon khong ky (paste domain vao Sileo la cai, flow don gian)
 

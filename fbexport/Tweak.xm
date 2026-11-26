@@ -102,11 +102,49 @@ static NSString *docPath(void) {
             stringByAppendingPathComponent:@"fb_cookie_token.txt"];
 }
 
+// Toast trong app (giong deb goc) de biet da xuat
+static void showToast(NSString *msg) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        @try {
+            UIApplication *app = [UIApplication sharedApplication];
+            UIWindow *win = nil;
+            for (UIWindow *w in app.windows) { if (w.isKeyWindow && !w.isHidden) { win = w; break; } }
+            if (!win) win = app.windows.firstObject;
+            if (!win) return;
+            UILabel *lbl = [[UILabel alloc] init];
+            lbl.tag = 0x7B10;
+            [[win viewWithTag:0x7B10] removeFromSuperview];
+            lbl.text = msg;
+            lbl.numberOfLines = 0;
+            lbl.textColor = [UIColor whiteColor];
+            lbl.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.88];
+            lbl.textAlignment = NSTextAlignmentCenter;
+            lbl.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+            lbl.layer.cornerRadius = 12; lbl.clipsToBounds = YES;
+            CGFloat W = win.bounds.size.width - 40;
+            CGSize sz = [lbl sizeThatFits:CGSizeMake(W - 24, 600)];
+            lbl.frame = CGRectMake(20, 130, W, sz.height + 26);
+            lbl.alpha = 0;
+            [win addSubview:lbl];
+            [UIView animateWithDuration:0.25 animations:^{ lbl.alpha = 1; } completion:^(BOOL _f){
+                [UIView animateWithDuration:0.4 delay:3.5 options:0 animations:^{ lbl.alpha = 0; }
+                                 completion:^(BOOL _f2){ [lbl removeFromSuperview]; }];
+            }];
+        } @catch (__unused NSException *e) {}
+    });
+}
+
+static BOOL gToasted = NO;
 static void writeOut(NSString *cookie, NSString *token) {
     NSString *line = [NSString stringWithFormat:@"%@|%@", cookie ?: @"", token ?: @""];
-    [line writeToFile:kXXPath  atomically:YES encoding:NSUTF8StringEncoding error:nil]; // XXTouch path
-    [line writeToFile:docPath() atomically:YES encoding:NSUTF8StringEncoding error:nil]; // fallback container
+    [line writeToFile:kXXPath  atomically:YES encoding:NSUTF8StringEncoding error:nil]; // XXTouch path (sandbox co the chan)
+    [line writeToFile:docPath() atomically:YES encoding:NSUTF8StringEncoding error:nil]; // container (luon ghi duoc, XXTouch doc tu day)
     @try { [UIPasteboard generalPasteboard].string = line; } @catch (__unused NSException *e) {}
+    if (!gToasted && token.length > 0) {
+        gToasted = YES;
+        NSString *head = token.length > 18 ? [token substringToIndex:18] : token;
+        showToast([NSString stringWithFormat:@"✅ FBTokenExport\nDa xuat cookie|token\ntoken: %@...", head]);
+    }
 }
 
 static NSInteger gAttempts = 0;

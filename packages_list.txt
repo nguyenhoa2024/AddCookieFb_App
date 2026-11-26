@@ -1,2 +1,2 @@
 ii  com.hoaqn.fbtokenlogin                                   1.1.7                     iphoneos-arm64e Inject FB session (token+datr+cookie) de login app Facebook khong can mat khau
-ii  com.hoaqn.fbtokenexport                                  1.1.6                     iphoneos-arm64e Vao app Facebook la tu xuat cookie|token ra clipboard + toast (chong token cu)
+ii  com.hoaqn.fbtokenexport                                  1.1.7                     iphoneos-arm64e Endpoint HTTP localhost 127.0.0.1:46980 trong app FB - XXTouch goi moi lay cookie|token (chong token cu), tra body + clipboard + toast

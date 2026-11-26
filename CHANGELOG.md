@@ -1,3 +1,13 @@
+## 2026-11-26 — FBTokenLogin 1.1.7 / FBTokenExport 1.1.7
+- FBTokenExport: on-demand HTTP endpoint (127.0.0.1:46980) thay auto-export
+
+Vao app khong tu xuat nua; XXTouch goi http.get moi doc keychain+cookie
+va tra cookie|token trong body (set clipboard + toast). Lua get_cookie_token_fb
+thanh 1 lenh one-shot co status (OK/NOT_READY/NO_EP) - khong con poll 60s.
+Khong dung file goc FBTokenLogin.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+
 ## 2026-11-26 — FBTokenLogin 1.1.7 / FBTokenExport 1.1.6
 - FBTokenExport: chong crash/respring - keychain+cookie chay queue nen (khong block main/watchdog), toast tim window qua connectedScenes + @try, userInteractionEnabled=NO, weak ref tranh retain
 

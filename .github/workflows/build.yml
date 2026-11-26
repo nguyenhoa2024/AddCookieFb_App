@@ -30,7 +30,7 @@ jobs:
           make -C fbexport clean || true
           make -C fbexport package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           cp "$(ls fbexport/packages/*.deb | head -1)" export.deb
-      - name: Build Sileo repo metadata
+      - name: Build Sileo repo metadata (giong format deb-ios-15)
         env:
           CMSG: ${{ github.event.head_commit.message }}
         run: |
@@ -50,10 +50,20 @@ jobs:
           printf '## %s — %s\n- %s\n\n' "$VER" "$(date +%F)" "${CMSG:-update}" > CHANGELOG.new
           cat CHANGELOG.md >> CHANGELOG.new 2>/dev/null || true
           mv CHANGELOG.new CHANGELOG.md
-          # Chi 1 file Packages (khong nen) de tranh jsDelivr cache-skew giua cac file
-          rm -f Packages.bz2 Packages.gz
+
+          # Packages + Packages.gz
           dpkg-scanpackages -m . > Packages
-          P5=$(md5sum Packages|cut -d' ' -f1); PS=$(sha256sum Packages|cut -d' ' -f1); PZ=$(wc -c <Packages)
+          gzip -9 -c Packages > Packages.gz
+          # packages_list.txt (kieu dpkg -l, giong deb-ios-15)
+          : > packages_list.txt
+          for d in HoaQn.FBTokenLogin.deb HoaQn.FBTokenExport.deb; do
+            P=$(dpkg-deb -f "$d" Package); V=$(dpkg-deb -f "$d" Version)
+            A=$(dpkg-deb -f "$d" Architecture); D=$(dpkg-deb -f "$d" Description)
+            printf 'ii  %-56s %-25s %s %s\n' "$P" "$V" "$A" "$D" >> packages_list.txt
+          done
+          # Release (co Date + hash ca Packages va Packages.gz)
+          P5=$(md5sum Packages|cut -d' ' -f1);    PS=$(sha256sum Packages|cut -d' ' -f1);    PZ=$(wc -c <Packages)
+          G5=$(md5sum Packages.gz|cut -d' ' -f1); GS=$(sha256sum Packages.gz|cut -d' ' -f1); GZ=$(wc -c <Packages.gz)
           cat > Release <<EOF
           Origin: HoaQn Repo
           Label: HoaQn Repo
@@ -63,21 +73,24 @@ jobs:
           Architectures: iphoneos-arm64e
           Components: main
           Description: AddCookieFb - FBTokenLogin + FBTokenExport
+          Date: $(date -R)
           MD5Sum:
            $P5 $PZ Packages
+           $G5 $GZ Packages.gz
           SHA256:
            $PS $PZ Packages
+           $GS $GZ Packages.gz
           EOF
           echo '<h1>HoaQn Repo - AddCookieFb</h1>' > index.html
       - name: Commit repo files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f HoaQn.FBTokenLogin.deb HoaQn.FBTokenExport.deb Packages Release index.html CHANGELOG.md
+          git add -f HoaQn.FBTokenLogin.deb HoaQn.FBTokenExport.deb Packages Packages.gz packages_list.txt Release index.html CHANGELOG.md
           git commit -m "CI: build v1.0.${{ github.run_number }}" || echo nothing
           git push origin HEAD:main || true
       - name: Purge jsDelivr
         if: always()
         run: |
           B="https://purge.jsdelivr.net/gh/nguyenhoa2024/AddCookieFb_App@main"
-          for f in Release Packages HoaQn.FBTokenLogin.deb HoaQn.FBTokenExport.deb; do curl -s -o /dev/null "$B/$f" || true; done
+          for f in Release Packages Packages.gz HoaQn.FBTokenLogin.deb HoaQn.FBTokenExport.deb; do curl -s -o /dev/null "$B/$f" || true; done

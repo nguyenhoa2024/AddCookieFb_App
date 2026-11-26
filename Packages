@@ -1,0 +1,32 @@
+Package: com.hoaqn.fbtokenlogin
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Maintainer: Manh
+Installed-Size: 184
+Depends: ellekit
+Filename: ./HoaQn.FBTokenLogin.deb
+Size: 6958
+MD5sum: 722042dcf9d09dc9824e5268e7219752
+SHA1: 5b8571c74fa9e83cf74addd7e835603cc29fe87c
+SHA256: d47d284e0fae8ab829b07d68db1c1fa3a8fcb063dd4660bbc170947f793f70f6
+Section: Tweaks
+Description: Inject FB session (token+datr+cookie) de login app Facebook khong can mat khau
+Author: Manh
+Name: FB Token Login
+
+Package: com.hoaqn.fbtokenlogin
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Maintainer: Manh
+Installed-Size: 184
+Depends: ellekit
+Filename: ./packages/com.hoaqn.fbtokenlogin_1.0.0_iphoneos-arm64.deb
+Size: 6958
+MD5sum: 722042dcf9d09dc9824e5268e7219752
+SHA1: 5b8571c74fa9e83cf74addd7e835603cc29fe87c
+SHA256: d47d284e0fae8ab829b07d68db1c1fa3a8fcb063dd4660bbc170947f793f70f6
+Section: Tweaks
+Description: Inject FB session (token+datr+cookie) de login app Facebook khong can mat khau
+Author: Manh
+Name: FB Token Login
+

@@ -1,3 +1,8 @@
+## 1.0.14 — 2026-11-26
+- Go GPG: nguon khong ky (paste domain vao Sileo la cai, flow don gian)
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+
 ## 1.0.11 — 2026-11-26
 - FIX: xoa fb_login.txt NGAY sau khi doc (chong crash-loop) + bao @try/@catch toan bo (khong lam crash FB)
 

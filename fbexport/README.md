@@ -4,7 +4,7 @@ Tweak iOS (roothide): **mở app Facebook là tự xuất `cookie|token` ra file
 
 ## Cơ chế
 Inject vào `com.facebook.Facebook`. Khi app mở, tweak:
-1. Đọc **access token** (`EAAAAA...`, app id 6628568379) từ keychain của chính app — query các service `com.facebook.graph`, `com.facebook.account.zmshimmed`, `com.facebook.accountstatus`, `com.facebook.tim` (wide query, không set access group → lấy được vì chạy trong tiến trình FB), lấy chuỗi `EAA...` dài nhất. Fallback: quét toàn bộ generic password của app.
+1. Đọc **access token** (`EAAAAA...`, app id 6628568379) từ keychain của chính app — query các service `com.facebook.graph`, `com.facebook.account.zmshimmed`, `com.facebook.accountstatus`, `com.facebook.tim` (kèm `kSecAttrAccount`). **Chống token cũ**: chỉ lấy token có `account == c_user` đang đăng nhập; nếu có nhiều token mà không khớp acc thì **không xuất** (tránh token acc cũ còn sót trong keychain). Chỉ 1 token duy nhất thì dùng luôn.
 2. Gom **cookie** (`c_user;xs;fr;datr;sb`) từ `NSHTTPCookieStorage`.
 3. **Xuất ra clipboard** (như deb gốc): nội dung `<cookie>|<token>`.
 4. **Toast trong app** "✅ FB Cookie & Token Copied — token: …" để biết đã chạy (giống deb gốc).

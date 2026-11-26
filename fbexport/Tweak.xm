@@ -37,46 +37,48 @@ static NSString *scanDataForToken(NSData *data) {
     return pickToken(s);
 }
 
-// Query keychain theo service (wide query: KHONG set access group -> tra ve
-// item tu moi access group cua app, vi dylib chay trong tien trinh FB).
-static NSString *tokenFromServices(void) {
+// kSecAttrAccount co the la NSString hoac NSData -> string
+static NSString *acctToStr(id acct) {
+    if ([acct isKindOfClass:[NSString class]]) return (NSString *)acct;
+    if ([acct isKindOfClass:[NSData class]])
+        return [[NSString alloc] initWithData:(NSData *)acct encoding:NSUTF8StringEncoding];
+    return nil;
+}
+
+// CHONG TOKEN CU: token phai thuoc dung uid (c_user) dang dang nhap.
+// Doc keychain kem kSecAttrAccount; uu tien token co account == wantUID.
+// - co token khop uid            -> dung (chac chan dung acc).
+// - khong khop nhung CHI 1 token  -> dung (khong the nham voi acc khac).
+// - nhieu token ma khong khop uid -> nil (tu choi xuat, tranh token acc cu).
+static NSString *tokenForUID(NSString *wantUID) {
     NSArray *services = @[@"com.facebook.graph", @"com.facebook.account.zmshimmed",
                           @"com.facebook.accountstatus", @"com.facebook.tim"];
-    NSString *best = nil;
+    NSMutableSet *distinct = [NSMutableSet set];
+    NSString *matched = nil, *single = nil;
     for (NSString *svc in services) {
-        NSDictionary *q = @{ (__bridge id)kSecClass:       (__bridge id)kSecClassGenericPassword,
-                             (__bridge id)kSecAttrService:  svc,
-                             (__bridge id)kSecReturnData:   (__bridge id)kCFBooleanTrue,
-                             (__bridge id)kSecMatchLimit:   (__bridge id)kSecMatchLimitAll };
+        NSDictionary *q = @{ (__bridge id)kSecClass:           (__bridge id)kSecClassGenericPassword,
+                             (__bridge id)kSecAttrService:      svc,
+                             (__bridge id)kSecReturnData:       (__bridge id)kCFBooleanTrue,
+                             (__bridge id)kSecReturnAttributes: (__bridge id)kCFBooleanTrue,
+                             (__bridge id)kSecMatchLimit:       (__bridge id)kSecMatchLimitAll };
         CFTypeRef res = NULL;
         if (SecItemCopyMatching((__bridge CFDictionaryRef)q, &res) == errSecSuccess && res) {
             for (id item in (__bridge NSArray *)res) {
-                NSData *d = [item isKindOfClass:[NSData class]] ? (NSData *)item : nil;
-                NSString *tok = scanDataForToken(d);
-                if (tok && (!best || tok.length > best.length)) best = tok;
+                if (![item isKindOfClass:[NSDictionary class]]) continue;
+                NSDictionary *it = (NSDictionary *)item;
+                NSString *tok = scanDataForToken(it[(__bridge id)kSecValueData]);
+                if (!tok) continue;
+                [distinct addObject:tok];
+                single = tok;
+                NSString *acct = acctToStr(it[(__bridge id)kSecAttrAccount]);
+                if (wantUID.length && acct.length && [acct isEqualToString:wantUID]) matched = tok;
             }
         }
         if (res) CFRelease(res);
     }
-    return best;
-}
-
-// Fallback: quet TOAN BO generic password cua app tim token EAA...
-static NSString *tokenWide(void) {
-    NSDictionary *q = @{ (__bridge id)kSecClass:     (__bridge id)kSecClassGenericPassword,
-                         (__bridge id)kSecReturnData:(__bridge id)kCFBooleanTrue,
-                         (__bridge id)kSecMatchLimit:(__bridge id)kSecMatchLimitAll };
-    CFTypeRef res = NULL;
-    NSString *best = nil;
-    if (SecItemCopyMatching((__bridge CFDictionaryRef)q, &res) == errSecSuccess && res) {
-        for (id item in (__bridge NSArray *)res) {
-            NSData *d = [item isKindOfClass:[NSData class]] ? (NSData *)item : nil;
-            NSString *tok = scanDataForToken(d);
-            if (tok && (!best || tok.length > best.length)) best = tok;
-        }
-    }
-    if (res) CFRelease(res);
-    return best;
+    if (matched) return matched;
+    if (distinct.count == 1) return single;
+    return nil;
 }
 
 // Gom cookie facebook theo thu tu c_user;xs;fr;datr;sb
@@ -138,21 +140,29 @@ static void writeOut(NSString *cookie, NSString *token) {
     }
 }
 
+static NSString *uidFromCookie(NSString *ck) {
+    if (!ck) return nil;
+    NSRange r = [ck rangeOfString:@"c_user="];
+    if (r.location == NSNotFound) return nil;
+    NSUInteger i = r.location + r.length, s = i;
+    while (i < ck.length) { unichar c = [ck characterAtIndex:i]; if (c < '0' || c > '9') break; i++; }
+    return i > s ? [ck substringWithRange:NSMakeRange(s, i - s)] : nil;
+}
+
 static NSInteger gAttempts = 0;
 static void tryExtract(void) {
     gAttempts++;
-    NSString *tok = tokenFromServices();
-    if (tok.length == 0) tok = tokenWide();
-    NSString *ck = collectCookies();
-    BOOL haveTok = tok.length > 0;
-    BOOL haveCk  = ck.length > 0 && [ck rangeOfString:@"c_user="].location != NSNotFound;
+    NSString *ck  = collectCookies();
+    NSString *uid = uidFromCookie(ck);
+    NSString *tok = uid.length ? tokenForUID(uid) : nil;   // CHI lay token khop acc hien tai
 
-    if (haveTok && haveCk) { writeOut(ck, tok); return; }           // du ca 2 -> xong
+    if (uid.length && tok.length) { writeOut(ck, tok); return; }    // du + khop acc -> xuat
     if (gAttempts < 30) {                                           // chua du -> doi 2s thu lai
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)),
                        dispatch_get_main_queue(), ^{ tryExtract(); });
-    } else if (haveTok) {
-        writeOut(ck, tok);                                         // het gio: co token thi van ghi
+    } else if (!gToasted) {
+        // KHONG xuat token cu/sai acc. Bao de biet da thu ma chua co token khop.
+        showToast(@"⚠️ FBTokenExport: chua co token khop acc (khong xuat token cu)");
     }
 }
 

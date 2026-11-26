@@ -1,0 +1,6 @@
+.theos/
+packages/
+pkgroot/
+obj/
+*.deb
+debs/*.deb

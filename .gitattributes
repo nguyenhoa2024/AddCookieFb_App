@@ -1,0 +1,7 @@
+* text=auto
+*.sh text eol=lf
+*.lua text eol=lf
+*.xm text eol=lf
+Makefile text eol=lf
+control text eol=lf
+*.plist text eol=lf

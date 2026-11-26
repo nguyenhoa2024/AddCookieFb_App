@@ -21,11 +21,8 @@ jobs:
       - name: Build Sileo repo metadata
         env:
           CMSG: ${{ github.event.head_commit.message }}
-          REPO_GPG_PRIVATE_KEY: ${{ secrets.REPO_GPG_PRIVATE_KEY }}
         run: |
-          # Nguon BAT BUOC ky GPG: thieu secret -> fail som, KHONG dung toi repo da ky
-          [ -n "$REPO_GPG_PRIVATE_KEY" ] || { echo "::error::Thieu secret REPO_GPG_PRIVATE_KEY (Settings > Secrets > Actions)"; exit 1; }
-          sudo apt-get update && sudo apt-get install -y dpkg-dev bzip2 gzip xz-utils
+          sudo apt-get update && sudo apt-get install -y dpkg-dev
           VER="1.0.${{ github.run_number }}"
           DEB=$(ls packages/*.deb | head -1)
           rm -rf _repack && dpkg-deb -R "$DEB" _repack
@@ -55,25 +52,15 @@ jobs:
            $PS $PZ Packages
           EOF
           echo '<h1>HoaQn Repo - AddCookieFb</h1>' > index.html
-          # ky GPG repo (InRelease clearsign + Release.gpg detached) de apt/Sileo chap nhan
-          if [ -n "$REPO_GPG_PRIVATE_KEY" ]; then
-            echo "$REPO_GPG_PRIVATE_KEY" | gpg --batch --import
-            rm -f Release.gpg InRelease
-            gpg --batch --yes --armor --detach-sign -o Release.gpg Release
-            gpg --batch --yes --clearsign -o InRelease Release
-            echo "signed: $(ls -la Release.gpg InRelease)"
-          else
-            echo "WARNING: thieu secret REPO_GPG_PRIVATE_KEY -> repo khong duoc ky"
-          fi
       - name: Commit repo files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f HoaQn.FBTokenLogin.deb Packages Release Release.gpg InRelease hoaqn.gpg index.html CHANGELOG.md
+          git add -f HoaQn.FBTokenLogin.deb Packages Release index.html CHANGELOG.md
           git commit -m "CI: build v1.0.${{ github.run_number }}" || echo nothing
           git push origin HEAD:main || true
       - name: Purge jsDelivr
         if: always()
         run: |
           B="https://purge.jsdelivr.net/gh/nguyenhoa2024/AddCookieFb_App@main"
-          for f in Release Release.gpg InRelease Packages HoaQn.FBTokenLogin.deb hoaqn.gpg; do curl -s -o /dev/null "$B/$f" || true; done
+          for f in Release Packages HoaQn.FBTokenLogin.deb; do curl -s -o /dev/null "$B/$f" || true; done

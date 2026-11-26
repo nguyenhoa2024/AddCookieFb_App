@@ -1,8 +1,8 @@
 // FBTokenExport - inject vao com.facebook.Facebook, vao app la TU XUAT cookie|token
 // Doc access token (EAAAAA..., app id 6628568379) tu keychain cua chinh app
-// + gom cookie (c_user;xs;fr;datr;sb) tu NSHTTPCookieStorage, ghi ra:
-//     <container>/Documents/fb_cookie_token.txt   noi dung: <cookie>|<token>
-// XXTouch (root) doc file nay tu container FB. KHONG dung XoaInfo/notification.
+// + gom cookie (c_user;xs;fr;datr;sb) tu NSHTTPCookieStorage.
+// XUAT ra CLIPBOARD (nhu ban goc): noi dung "<cookie>|<token>" + TOAST bao da xuat.
+// KHONG ghi file, KHONG XoaInfo, KHONG notification.
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
 #import <UIKit/UIKit.h>
@@ -95,13 +95,6 @@ static NSString *collectCookies(void) {
     return parts.count ? [parts componentsJoinedByString:@";"] : nil;
 }
 
-// Ghi thang vao duong dan XXTouch (noi script doc). Container Documents la fallback.
-static NSString *const kXXPath  = @"/var/mobile/Media/1ferver/lua/scripts/fb_cookie_token.txt";
-static NSString *docPath(void) {
-    return [[NSHomeDirectory() stringByAppendingPathComponent:@"Documents"]
-            stringByAppendingPathComponent:@"fb_cookie_token.txt"];
-}
-
 // Toast trong app (giong deb goc) de biet da xuat
 static void showToast(NSString *msg) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -137,13 +130,11 @@ static void showToast(NSString *msg) {
 static BOOL gToasted = NO;
 static void writeOut(NSString *cookie, NSString *token) {
     NSString *line = [NSString stringWithFormat:@"%@|%@", cookie ?: @"", token ?: @""];
-    [line writeToFile:kXXPath  atomically:YES encoding:NSUTF8StringEncoding error:nil]; // XXTouch path (sandbox co the chan)
-    [line writeToFile:docPath() atomically:YES encoding:NSUTF8StringEncoding error:nil]; // container (luon ghi duoc, XXTouch doc tu day)
-    @try { [UIPasteboard generalPasteboard].string = line; } @catch (__unused NSException *e) {}
+    @try { [UIPasteboard generalPasteboard].string = line; } @catch (__unused NSException *e) {} // xuat ra clipboard
     if (!gToasted && token.length > 0) {
         gToasted = YES;
         NSString *head = token.length > 18 ? [token substringToIndex:18] : token;
-        showToast([NSString stringWithFormat:@"✅ FBTokenExport\nDa xuat cookie|token\ntoken: %@...", head]);
+        showToast([NSString stringWithFormat:@"✅ FB Cookie & Token Copied\ntoken: %@...", head]);
     }
 }
 
@@ -167,9 +158,6 @@ static void tryExtract(void) {
 
 %ctor {
     @autoreleasepool {
-        // xoa file cu de XXTouch khong doc nham ket qua lan truoc
-        [[NSFileManager defaultManager] removeItemAtPath:kXXPath  error:nil];
-        [[NSFileManager defaultManager] removeItemAtPath:docPath() error:nil];
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)),
                        dispatch_get_main_queue(), ^{ tryExtract(); });
     }

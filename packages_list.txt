@@ -1,2 +1,3 @@
 ii  com.hoaqn.fbtokenlogin                                   1.1.7                     iphoneos-arm64e Inject FB session (token+datr+cookie) de login app Facebook khong can mat khau
 ii  com.hoaqn.fbtokenexport                                  1.1.7                     iphoneos-arm64e Endpoint HTTP localhost 127.0.0.1:46980 trong app FB - XXTouch goi moi lay cookie|token (chong token cu), tra body + clipboard + toast
+ii  com.0xkuj.nopastealerts16                                1.0.0                     iphoneos-arm64e Remove the annoying paste confirmation added on iOS 16
